@@ -1308,16 +1308,23 @@ def atk_rekap():
     """Halaman rekap pengajuan ATK."""
     bulan_filter = request.args.get('bulan', '').strip()
     tahun_filter = request.args.get('tahun', str(datetime.today().year)).strip()
+    dept_filter = request.args.get('departement', '').strip()
 
     try:
         sheet = get_sheet(SHEET_PENGAJUAN_ATK)
         records = get_all_data(sheet) if sheet else []
+
+        # Load departments list for filter dropdown
+        sheet_dept = get_sheet(SHEET_MASTER_DEPT)
+        dept_list = get_all_data(sheet_dept) if sheet_dept else []
 
         # Filter
         if bulan_filter:
             records = [r for r in records if str(r.get('Bulan', '')) == bulan_filter]
         if tahun_filter:
             records = [r for r in records if str(r.get('Tahun', '')) == str(tahun_filter)]
+        if dept_filter:
+            records = [r for r in records if str(r.get('Departement', '')) == dept_filter]
 
         # Rekap per departement
         dept_rekap = {}
@@ -1356,6 +1363,7 @@ def atk_rekap():
                                grand_total=grand_total, total_items=total_items,
                                total_dept=total_dept,
                                bulan_filter=bulan_filter, tahun_filter=tahun_filter,
+                               dept_filter=dept_filter, dept_list=dept_list,
                                bulan_list=BULAN_LIST, tahun_set=tahun_set)
     except Exception as e:
         flash(f'Error: {str(e)}', 'error')
@@ -1363,6 +1371,7 @@ def atk_rekap():
                                dept_rekap={}, barang_rekap={},
                                grand_total=0, total_items=0, total_dept=0,
                                bulan_filter='', tahun_filter=str(datetime.today().year),
+                               dept_filter='', dept_list=[],
                                bulan_list=BULAN_LIST, tahun_set=[])
 
 
