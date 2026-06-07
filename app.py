@@ -143,6 +143,44 @@ def format_currency(value):
         return str(value)
 
 
+def safe_num(val):
+    """Konversi nilai terformat (seperti currency rupiah, desimal) ke float secara aman."""
+    if val is None or val == '':
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+        
+    try:
+        s = str(val).strip().replace('Rp', '').replace('rp', '').replace('RP', '').replace(' ', '')
+        
+        # Deteksi format ribuan/desimal Indonesia vs US
+        if ',' in s:
+            if '.' in s:
+                if s.find('.') < s.find(','):
+                    # Format ID: 150.000,00 -> 150000.00
+                    s = s.replace('.', '').replace(',', '.')
+                else:
+                    # Format US: 150,000.00 -> 150000.00
+                    s = s.replace(',', '')
+            else:
+                # Hanya ada koma (misal: 150.000,00 -> 150000.00 atau 150,5)
+                parts = s.split(',')
+                if len(parts) == 2 and len(parts[1]) == 3:
+                    s = s.replace(',', '')
+                else:
+                    s = s.replace(',', '.')
+        else:
+            # Hanya ada titik (misal: 150.000)
+            if '.' in s:
+                parts = s.split('.')
+                if len(parts) == 2 and len(parts[1]) == 3:
+                    s = s.replace('.', '')
+                    
+        return float(s or 0)
+    except Exception:
+        return 0.0
+
+
 def parse_date(date_str):
     """Parse tanggal dari format DD/MM/YYYY ke datetime object."""
     if not date_str:
@@ -739,12 +777,6 @@ def kendaraan_tracking(no_kendaraan):
         total_service = len(all_service_sorted)
 
         # Total biaya
-        def safe_num(val):
-            try:
-                return float(str(val).replace(',', '').replace('.', '').strip() or 0)
-            except Exception:
-                return 0.0
-
         total_pengajuan = sum(safe_num(r.get('Pengajuan', 0)) for r in all_service_sorted)
         total_realisasi = sum(safe_num(r.get('Realisasi', 0)) for r in all_service_sorted)
         total_biaya = sum(safe_num(r.get('Total', 0)) for r in all_service_sorted)
@@ -822,13 +854,6 @@ def atk_dashboard():
         total_barang = len(master_atk)
         total_dept = len(departments)
         total_pengajuan = len(pengajuan)
-
-        def safe_num(val):
-            try:
-                return float(str(val).replace(',', '').replace('.', '').strip() or 0)
-            except Exception:
-                return 0.0
-
         grand_total = sum(safe_num(r.get('Total Harga', 0)) for r in pengajuan)
 
         # 5 pengajuan terbaru
@@ -1087,12 +1112,6 @@ def atk_pengajuan_list():
         dept_list = get_all_data(sheet_dept) if sheet_dept else []
 
         # Hitung total harga
-        def safe_num(val):
-            try:
-                return float(str(val).replace(',', '').replace('.', '').strip() or 0)
-            except Exception:
-                return 0.0
-
         total_harga = sum(safe_num(r.get('Total Harga', 0)) for r in records)
 
         # Get unique tahun for filter dropdown
@@ -1297,12 +1316,6 @@ def atk_rekap():
             records = [r for r in records if str(r.get('Bulan', '')) == bulan_filter]
         if tahun_filter:
             records = [r for r in records if str(r.get('Tahun', '')) == str(tahun_filter)]
-
-        def safe_num(val):
-            try:
-                return float(str(val).replace(',', '').replace('.', '').strip() or 0)
-            except Exception:
-                return 0.0
 
         # Rekap per departement
         dept_rekap = {}
