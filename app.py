@@ -3,6 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 import os
+import json
 from datetime import datetime, timedelta
 
 # --- Config ---
@@ -64,11 +65,14 @@ BULAN_LIST = [
 def get_sheets_client():
     """Inisialisasi Google Sheets client."""
     try:
-        creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+        creds_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS_JSON')
+        if creds_json:
+            info = json.loads(creds_json)
+            creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+        else:
+            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
         client = gspread.authorize(creds)
         return client
-    except FileNotFoundError:
-        return None
     except Exception:
         return None
 
@@ -184,7 +188,7 @@ def expiring_filter(value, days=30):
 # ============================================================
 @app.route('/')
 def portal():
-    return render_template('portal.html')
+    return redirect(url_for('atk_dashboard'))
 
 
 # ============================================================
