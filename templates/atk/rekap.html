@@ -22,7 +22,19 @@
   <!-- Filter Bar -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 print:hidden">
     <form method="GET" action="{{ url_for('atk_rekap') }}">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Departement</label>
+          <select name="departement"
+                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="">Semua Departement</option>
+            {% for d in dept_list %}
+            <option value="{{ d.get('Departement', '') }}" {% if dept_filter == d.get('Departement', '') %}selected{% endif %}>
+              {{ d.get('Departement', '') }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">Bulan</label>
           <select name="bulan"
@@ -63,7 +75,8 @@
   <div class="hidden print:block mb-6 text-center">
     <h2 class="text-xl font-bold">REKAP PENGAJUAN ATK</h2>
     <p class="text-sm text-gray-600 mt-1">
-      {% if bulan_filter %}Bulan: {{ bulan_filter }} {% endif %}
+      {% if dept_filter %}Departement: {{ dept_filter }} | {% endif %}
+      {% if bulan_filter %}Bulan: {{ bulan_filter }} | {% endif %}
       Tahun: {{ tahun_filter }}
     </p>
     <p class="text-xs text-gray-400 mt-1">Dicetak: {{ now().strftime('%d/%m/%Y %H:%M') if now is defined else '' }}</p>
