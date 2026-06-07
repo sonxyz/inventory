@@ -1,0 +1,44 @@
+/* Custom CSS tambahan untuk Inventory DPP */
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Table improvements */
+table {
+  border-collapse: collapse;
+}
+
+/* Input date placeholder */
+input[placeholder*="DD/MM/YYYY"]::placeholder {
+  color: #94a3b8;
+  font-family: 'Courier New', monospace;
+}
+
+/* Rupiah input mono font */
+.font-mono {
+  font-feature-settings: "tnum";
+}
+
+/* Flash message animation */
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.flash-message {
+  animation: slideIn 0.2s ease-out;
+}
+
+/* Print styles */
+@media print {
+  nav, footer, #delete-modal { display: none !important; }
+  main { padding-top: 0 !important; }
+}

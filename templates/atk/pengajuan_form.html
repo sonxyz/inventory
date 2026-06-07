@@ -1,0 +1,302 @@
+{% extends 'base_atk.html' %}
+{% block title %}Buat Pengajuan ATK{% endblock %}
+
+{% block content %}
+<div class="mt-6 max-w-6xl mx-auto">
+
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+    <a href="{{ url_for('atk_dashboard') }}" class="hover:text-emerald-600">Dashboard</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <a href="{{ url_for('atk_pengajuan_list') }}" class="hover:text-emerald-600">Pengajuan ATK</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <span class="font-medium text-gray-800">Buat Pengajuan Baru</span>
+  </nav>
+
+  <form method="POST" id="form-pengajuan">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <!-- Form Header -->
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+        <div class="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-gray-900">Buat Pengajuan ATK Baru</h1>
+          <p class="text-sm text-gray-500">Isi informasi pengajuan dan tambahkan item barang ATK</p>
+        </div>
+      </div>
+
+      <div class="p-6 space-y-8">
+        <!-- Informasi Pengajuan -->
+        <div>
+          <h2 class="text-sm font-semibold text-emerald-700 uppercase tracking-wider mb-4 pb-2 border-b border-emerald-100">
+            Informasi Pengajuan
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" for="tanggal_pengajuan">Tanggal Pengajuan</label>
+              <input type="text" id="tanggal_pengajuan" name="tanggal_pengajuan"
+                     value="{{ today }}"
+                     placeholder="DD/MM/YYYY"
+                     class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" for="departement">Departement <span class="text-red-500">*</span></label>
+              <select id="departement" name="departement" required
+                      class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                <option value="">-- Pilih Departement --</option>
+                {% for d in dept_list %}
+                <option value="{{ d.get('Departement', '') }}">{{ d.get('Departement', '') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" for="bulan">Bulan <span class="text-red-500">*</span></label>
+              <select id="bulan" name="bulan" required
+                      class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                <option value="">-- Pilih Bulan --</option>
+                {% for b in bulan_list %}
+                <option value="{{ b }}">{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" for="tahun">Tahun <span class="text-red-500">*</span></label>
+              <input type="number" id="tahun" name="tahun" required
+                     value="{{ current_year }}"
+                     min="2020" max="2099"
+                     class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item Barang -->
+        <div>
+          <div class="flex items-center justify-between mb-4 pb-2 border-b border-emerald-100">
+            <h2 class="text-sm font-semibold text-emerald-700 uppercase tracking-wider">
+              Item Barang ATK
+            </h2>
+            <button type="button" onclick="tambahBaris()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Tambah Barang
+            </button>
+          </div>
+
+          <div id="items-container">
+            <!-- Row 1 (default) -->
+            <div class="item-row bg-gray-50 rounded-lg p-4 mb-3 border border-gray-200" id="row_1">
+              <div class="flex items-start gap-2">
+                <span class="mt-2 text-xs font-bold text-gray-400 w-6 text-center flex-shrink-0">1</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 flex-1">
+                  <div class="lg:col-span-2">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Kode Barang <span class="text-red-500">*</span></label>
+                    <select name="kode_barang[]" onchange="onKodeBarangChange(this, 1)" required
+                            class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      <option value="">-- Pilih Barang --</option>
+                      {% for a in atk_list %}
+                      <option value="{{ a.get('Kode', '') }}" data-nama="{{ a.get('Nama Barang', '') }}" data-satuan="{{ a.get('Satuan', '') }}" data-harga="{{ a.get('Perkiraan Harga', 0) }}">
+                        {{ a.get('Kode', '') }} — {{ a.get('Nama Barang', '') }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Nama Barang</label>
+                    <input type="text" name="nama_barang[]" id="nama_barang_1" readonly
+                           class="w-full px-2.5 py-2 border border-gray-100 rounded-lg text-sm bg-gray-100 text-gray-600" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah <span class="text-red-500">*</span></label>
+                    <input type="number" name="jumlah[]" id="jumlah_1" min="1" required
+                           onchange="hitungTotal(1)" oninput="hitungTotal(1)"
+                           class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Satuan</label>
+                    <input type="text" name="satuan[]" id="satuan_1" readonly
+                           class="w-full px-2.5 py-2 border border-gray-100 rounded-lg text-sm bg-gray-100 text-gray-600" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Harga Satuan</label>
+                    <input type="number" name="harga_satuan[]" id="harga_satuan_1" min="0"
+                           onchange="hitungTotal(1)" oninput="hitungTotal(1)"
+                           class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+                </div>
+                <div class="flex flex-col items-center gap-1 mt-5 flex-shrink-0">
+                  <div class="text-xs text-gray-400 whitespace-nowrap">Total:</div>
+                  <div class="text-sm font-bold text-gray-700 whitespace-nowrap" id="total_display_1">Rp 0</div>
+                  <input type="hidden" name="keterangan_item[]" value="" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grand Total -->
+          <div class="flex items-center justify-between bg-emerald-50 rounded-lg px-4 py-3 mt-3 border border-emerald-200">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span class="text-sm font-semibold text-emerald-800">
+                Total Item: <span id="total-items">1</span>
+              </span>
+            </div>
+            <div class="text-lg font-bold text-emerald-800" id="grand-total">Rp 0</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+          <a href="{{ url_for('atk_pengajuan_list') }}"
+             class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+            Batal
+          </a>
+          <button type="submit" id="btn-simpan-pengajuan"
+            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Simpan Pengajuan
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Master ATK data
+  const masterATK = {{ atk_list | tojson }};
+  let rowCount = 1;
+
+  function onKodeBarangChange(selectEl, rowIndex) {
+    const kode = selectEl.value;
+    const item = masterATK.find(a => String(a['Kode']) === kode);
+    if (item) {
+      document.getElementById('nama_barang_' + rowIndex).value = item['Nama Barang'] || '';
+      document.getElementById('satuan_' + rowIndex).value = item['Satuan'] || '';
+      document.getElementById('harga_satuan_' + rowIndex).value = item['Perkiraan Harga'] || 0;
+      hitungTotal(rowIndex);
+    } else {
+      document.getElementById('nama_barang_' + rowIndex).value = '';
+      document.getElementById('satuan_' + rowIndex).value = '';
+      document.getElementById('harga_satuan_' + rowIndex).value = '';
+      document.getElementById('total_display_' + rowIndex).textContent = 'Rp 0';
+    }
+    updateGrandTotal();
+  }
+
+  function hitungTotal(rowIndex) {
+    const jumlah = parseFloat(document.getElementById('jumlah_' + rowIndex).value) || 0;
+    const harga = parseFloat(document.getElementById('harga_satuan_' + rowIndex).value) || 0;
+    const total = jumlah * harga;
+    document.getElementById('total_display_' + rowIndex).textContent = formatRupiah(total);
+    updateGrandTotal();
+  }
+
+  function formatRupiah(num) {
+    return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+  }
+
+  function updateGrandTotal() {
+    let grandTotal = 0;
+    let itemCount = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+      const idx = row.id.split('_')[1];
+      const jumlah = parseFloat(document.getElementById('jumlah_' + idx)?.value) || 0;
+      const harga = parseFloat(document.getElementById('harga_satuan_' + idx)?.value) || 0;
+      grandTotal += jumlah * harga;
+      itemCount++;
+    });
+    document.getElementById('grand-total').textContent = formatRupiah(grandTotal);
+    document.getElementById('total-items').textContent = itemCount;
+  }
+
+  function tambahBaris() {
+    rowCount++;
+    const container = document.getElementById('items-container');
+    const optionsHTML = '<option value="">-- Pilih Barang --</option>' +
+      masterATK.map(a =>
+        '<option value="' + a['Kode'] + '" data-nama="' + (a['Nama Barang']||'') + '" data-satuan="' + (a['Satuan']||'') + '" data-harga="' + (a['Perkiraan Harga']||0) + '">' +
+        a['Kode'] + ' — ' + (a['Nama Barang']||'') + '</option>'
+      ).join('');
+
+    const newRow = document.createElement('div');
+    newRow.className = 'item-row bg-gray-50 rounded-lg p-4 mb-3 border border-gray-200';
+    newRow.id = 'row_' + rowCount;
+    newRow.style.animation = 'fadeIn 0.3s ease';
+    newRow.innerHTML = `
+      <div class="flex items-start gap-2">
+        <span class="mt-2 text-xs font-bold text-gray-400 w-6 text-center flex-shrink-0">${rowCount}</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 flex-1">
+          <div class="lg:col-span-2">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Kode Barang <span class="text-red-500">*</span></label>
+            <select name="kode_barang[]" onchange="onKodeBarangChange(this, ${rowCount})" required
+                    class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              ${optionsHTML}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Nama Barang</label>
+            <input type="text" name="nama_barang[]" id="nama_barang_${rowCount}" readonly
+                   class="w-full px-2.5 py-2 border border-gray-100 rounded-lg text-sm bg-gray-100 text-gray-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah <span class="text-red-500">*</span></label>
+            <input type="number" name="jumlah[]" id="jumlah_${rowCount}" min="1" required
+                   onchange="hitungTotal(${rowCount})" oninput="hitungTotal(${rowCount})"
+                   class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Satuan</label>
+            <input type="text" name="satuan[]" id="satuan_${rowCount}" readonly
+                   class="w-full px-2.5 py-2 border border-gray-100 rounded-lg text-sm bg-gray-100 text-gray-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Harga Satuan</label>
+            <input type="number" name="harga_satuan[]" id="harga_satuan_${rowCount}" min="0"
+                   onchange="hitungTotal(${rowCount})" oninput="hitungTotal(${rowCount})"
+                   class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+        </div>
+        <div class="flex flex-col items-center gap-1 mt-5 flex-shrink-0">
+          <div class="text-xs text-gray-400 whitespace-nowrap">Total:</div>
+          <div class="text-sm font-bold text-gray-700 whitespace-nowrap" id="total_display_${rowCount}">Rp 0</div>
+          <input type="hidden" name="keterangan_item[]" value="" />
+          <button type="button" onclick="hapusBaris(${rowCount})" title="Hapus item"
+            class="mt-1 p-1 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>`;
+    container.appendChild(newRow);
+    updateGrandTotal();
+  }
+
+  function hapusBaris(index) {
+    const rows = document.querySelectorAll('.item-row');
+    if (rows.length <= 1) {
+      alert('Minimal harus ada 1 item barang.');
+      return;
+    }
+    const row = document.getElementById('row_' + index);
+    if (row) {
+      row.style.animation = 'fadeOut 0.2s ease';
+      setTimeout(() => { row.remove(); updateGrandTotal(); }, 200);
+    }
+  }
+</script>
+
+<style>
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
+</style>
+{% endblock %}

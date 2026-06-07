@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% block title %}Tracking Service — {{ no_kendaraan }}{% endblock %}
+
+{% block content %}
+<div class="mt-6">
+
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+    <a href="{{ url_for('kendaraan_dashboard') }}" class="hover:text-blue-600">Dashboard</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <a href="{{ url_for('kendaraan_list') }}" class="hover:text-blue-600">Data Kendaraan</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <span class="font-medium text-gray-800">Tracking Service</span>
+  </nav>
+
+  <!-- Header Kendaraan -->
+  <div class="bg-gradient-to-r from-blue-800 to-blue-600 rounded-xl p-6 mb-6 text-white">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 bg-white bg-opacity-20 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2-1m8 1l-1-1m0 0H9m4 1h2a1 1 0 001-1V9a1 1 0 00-.293-.707l-3-3A1 1 0 0011 5H8m5 11v1m0-1H9"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold">{{ no_kendaraan }}</h1>
+          {% if kendaraan %}
+          <p class="text-blue-200 text-sm mt-0.5">
+            {{ kendaraan.get('Merk', '') }} {{ kendaraan.get('Model Kendaraan', '') }}
+            &mdash; {{ kendaraan.get('Pemilik', '') }}
+          </p>
+          <p class="text-blue-300 text-xs mt-0.5">
+            {{ kendaraan.get('Jenis/Type', '') }} &bull; {{ kendaraan.get('Warna', '') }} &bull; {{ kendaraan.get('Bahan Bakar', '') }}
+          </p>
+          {% else %}
+          <p class="text-blue-200 text-sm">Data kendaraan tidak ditemukan di master</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="flex gap-2">
+        {% if kendaraan %}
+        <a href="{{ url_for('kendaraan_edit', no=kendaraan.get('No')) }}"
+           class="flex items-center gap-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Edit Kendaraan
+        </a>
+        {% endif %}
+        <a href="{{ url_for('service_mobil_tambah') }}"
+           class="flex items-center gap-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Tambah Service
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <p class="text-xs text-gray-500 font-medium mb-1">Total Service</p>
+      <p class="text-2xl font-bold text-gray-900">{{ total_service }}</p>
+      <p class="text-xs text-gray-400 mt-1">
+        Mobil: {{ service_mobil|length }} &bull; Motor: {{ service_motor|length }}
+      </p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <p class="text-xs text-gray-500 font-medium mb-1">Total Biaya</p>
+      <p class="text-lg font-bold text-blue-700">{{ total_biaya|rupiah }}</p>
+      <p class="text-xs text-gray-400 mt-1">Realisasi kumulatif</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <p class="text-xs text-gray-500 font-medium mb-1">KM Terakhir</p>
+      <p class="text-2xl font-bold text-green-700">{{ "{:,.0f}".format(last_km).replace(',', '.') }}</p>
+      <p class="text-xs text-gray-400 mt-1">odometer tercatat</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <p class="text-xs text-gray-500 font-medium mb-1">Service Berikutnya</p>
+      {% if next_service_km > 0 %}
+      <p class="text-2xl font-bold text-orange-600">{{ "{:,.0f}".format(next_service_km).replace(',', '.') }}</p>
+      <p class="text-xs text-gray-400 mt-1">target KM</p>
+      {% else %}
+      <p class="text-2xl font-bold text-gray-300">—</p>
+      <p class="text-xs text-gray-400 mt-1">belum ditentukan</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+
+    <!-- KM Progress Bar -->
+    {% if km_records and next_service_km > 0 %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 xl:col-span-2">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+        Progress KM ke Service Berikutnya
+      </h2>
+      {% set first_km = km_records[0].km_awal if km_records else 0 %}
+      {% set range_km = next_service_km - first_km %}
+      {% set current_progress = last_km - first_km %}
+      {% if range_km > 0 %}
+        {% set pct = [(current_progress / range_km * 100), 100]|min %}
+      {% else %}
+        {% set pct = 0 %}
+      {% endif %}
+      <div class="mb-3 flex items-center justify-between text-xs text-gray-500">
+        <span>KM {{ "{:,.0f}".format(first_km).replace(',', '.') }}</span>
+        <span class="font-semibold {% if pct >= 90 %}text-red-600{% elif pct >= 70 %}text-orange-500{% else %}text-green-600{% endif %}">
+          {{ "%.0f"|format(pct) }}%
+        </span>
+        <span>Target {{ "{:,.0f}".format(next_service_km).replace(',', '.') }}</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+        <div class="h-4 rounded-full transition-all duration-700
+                    {% if pct >= 90 %}bg-red-500{% elif pct >= 70 %}bg-orange-400{% else %}bg-green-500{% endif %}"
+             style="width: {{ "%.1f"|format(pct) }}%"></div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">
+        Sisa: <strong>{{ "{:,.0f}".format([next_service_km - last_km, 0]|max).replace(',', '.') }} KM</strong> lagi menuju service berikutnya
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Jenis Service Terbanyak -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        Jenis Service
+      </h2>
+      {% if jenis_sorted %}
+        {% set max_count = jenis_sorted[0][1] %}
+        <div class="space-y-2.5">
+          {% for jenis_nama, count in jenis_sorted[:6] %}
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-gray-600 truncate max-w-[140px]" title="{{ jenis_nama }}">{{ jenis_nama }}</span>
+              <span class="font-semibold text-gray-800 ml-2">{{ count }}x</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-1.5">
+              <div class="bg-purple-500 h-1.5 rounded-full" style="width: {{ (count / max_count * 100)|int }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-gray-400 text-center py-4">Belum ada data service</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Timeline History Service -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-base font-semibold text-gray-800 flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Timeline History Service
+        <span class="ml-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">{{ total_service }} record</span>
+      </h2>
+    </div>
+
+    {% if all_service %}
+    <div class="relative">
+      <!-- Timeline line -->
+      <div class="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200 ml-0.5"></div>
+
+      <div class="space-y-4">
+        {% for s in all_service|reverse %}
+        <div class="relative flex gap-4 pl-12">
+          <!-- Dot -->
+          <div class="absolute left-0 w-11 flex items-center justify-center">
+            <div class="w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center
+                        {% if s._jenis == 'mobil' %}bg-blue-500{% else %}bg-purple-500{% endif %}">
+              <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 8 8">
+                <circle cx="4" cy="4" r="3"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card -->
+          <div class="flex-1 bg-gray-50 hover:bg-blue-50 border border-gray-100 rounded-xl p-4 transition-colors group">
+            <div class="flex flex-wrap items-start justify-between gap-2 mb-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-mono text-gray-400 font-semibold">{{ s.get('Tanggal Service', '-') }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                             {% if s._jenis == 'mobil' %}bg-blue-100 text-blue-700{% else %}bg-purple-100 text-purple-700{% endif %}">
+                  {{ s._jenis|upper }}
+                </span>
+                <span class="text-sm font-bold text-gray-800">{{ s.get('Jenis Service', '-') }}</span>
+              </div>
+              <!-- Action buttons (visible on hover) -->
+              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href="{{ url_for('service_' + s._jenis + '_edit', no=s.get('No')) }}"
+                   class="p-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors" title="Edit">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </a>
+                <button type="button"
+                  onclick="confirmDelete('{{ url_for('service_' + s._jenis + '_delete', no=s.get('No')) }}', '{{ s.get('Jenis Service', '') }}')"
+                  class="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors" title="Hapus">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Detail info -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <p class="text-gray-400 mb-0.5">Bengkel</p>
+                <p class="font-medium text-gray-700">{{ s.get('Nama Bengkel', '-') }}</p>
+              </div>
+              <div>
+                <p class="text-gray-400 mb-0.5">Total Biaya</p>
+                <p class="font-bold text-blue-700">{{ s.get('Total', 0)|rupiah }}</p>
+              </div>
+              <div>
+                <p class="text-gray-400 mb-0.5">KM Akhir</p>
+                <p class="font-medium text-gray-700 font-mono">
+                  {% if s.get('KM Akhir') %}
+                    {{ "{:,.0f}".format(s.get('KM Akhir')|float).replace(',', '.') }} km
+                  {% else %}—{% endif %}
+                </p>
+              </div>
+              <div>
+                <p class="text-gray-400 mb-0.5">Selisih KM</p>
+                <p class="font-medium text-green-700 font-mono">
+                  {% if s.get('Selisih KM') %}
+                    +{{ "{:,.0f}".format(s.get('Selisih KM')|float).replace(',', '.') }} km
+                  {% else %}—{% endif %}
+                </p>
+              </div>
+            </div>
+
+            {% if s.get('Keterangan') %}
+            <p class="mt-2 text-xs text-gray-400 italic border-t border-gray-100 pt-2">
+              {{ s.get('Keterangan') }}
+            </p>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="flex flex-col items-center justify-center py-16 text-gray-400">
+      <svg class="w-16 h-16 mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p class="font-medium text-gray-500">Belum ada history service untuk kendaraan ini</p>
+      <p class="text-sm mt-1">Tambahkan record service pertama untuk mulai tracking</p>
+      <div class="flex gap-3 mt-4">
+        <a href="{{ url_for('service_mobil_tambah') }}"
+           class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          + Service Mobil
+        </a>
+        <a href="{{ url_for('service_motor_tambah') }}"
+           class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          + Service Motor
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- KM Table -->
+  {% if km_records %}
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+    <h2 class="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+      <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+      Riwayat Kilometer
+    </h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-xs text-gray-600 uppercase tracking-wide">
+            <th class="text-left px-4 py-2.5 font-semibold rounded-l-lg">Tanggal</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Jenis Service</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Bengkel</th>
+            <th class="text-right px-4 py-2.5 font-semibold">KM Awal</th>
+            <th class="text-right px-4 py-2.5 font-semibold">KM Akhir</th>
+            <th class="text-right px-4 py-2.5 font-semibold">Selisih</th>
+            <th class="text-right px-4 py-2.5 font-semibold rounded-r-lg">KM Berikutnya</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for km in km_records %}
+          <tr class="border-b border-gray-50 {% if loop.even %}bg-gray-50/40{% endif %} hover:bg-blue-50/50 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ km.tanggal }}</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                           {% if km._jenis == 'mobil' %}bg-blue-50 text-blue-700{% else %}bg-purple-50 text-purple-700{% endif %}">
+                {{ km.jenis_service }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-gray-600 text-xs">{{ km.bengkel }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs text-gray-500">{{ "{:,.0f}".format(km.km_awal).replace(',', '.') }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs font-semibold text-gray-800">{{ "{:,.0f}".format(km.km_akhir).replace(',', '.') }}</td>
+            <td class="px-4 py-3 text-right">
+              <span class="font-mono text-xs text-green-700 font-semibold">+{{ "{:,.0f}".format(km.selisih).replace(',', '.') }}</span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              {% if km.km_selanjutnya > 0 %}
+              <span class="font-mono text-xs text-orange-600 font-semibold">{{ "{:,.0f}".format(km.km_selanjutnya).replace(',', '.') }}</span>
+              {% else %}
+              <span class="text-gray-300">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% block title %}{% if mode == 'tambah' %}Tambah Kendaraan{% else %}Edit Kendaraan{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mt-6 max-w-5xl mx-auto">
+
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+    <a href="{{ url_for('kendaraan_dashboard') }}" class="hover:text-blue-600">Dashboard</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <a href="{{ url_for('kendaraan_list') }}" class="hover:text-blue-600">Data Kendaraan</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <span class="font-medium text-gray-800">{% if mode == 'tambah' %}Tambah{% else %}Edit{% endif %} Kendaraan</span>
+  </nav>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    <!-- Form Header -->
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+      <div class="w-9 h-9 {% if mode == 'tambah' %}bg-blue-100{% else %}bg-yellow-100{% endif %} rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 {% if mode == 'tambah' %}text-blue-600{% else %}text-yellow-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {% if mode == 'tambah' %}
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          {% else %}
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          {% endif %}
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-gray-900">
+          {% if mode == 'tambah' %}Tambah Kendaraan Baru{% else %}Edit Data Kendaraan{% endif %}
+        </h1>
+        <p class="text-sm text-gray-500">
+          {% if mode == 'edit' %}No. Kendaraan: <strong>{{ data.get('No. Kendaraan', '') }}</strong>{% else %}Isi semua field yang diperlukan{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" class="p-6 space-y-8">
+
+      <!-- 1. Informasi Dasar -->
+      <div>
+        <h2 class="text-sm font-semibold text-blue-700 uppercase tracking-wider mb-4 pb-2 border-b border-blue-100">
+          Informasi Dasar Kendaraan
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="no_kendaraan">No. Kendaraan <span class="text-red-500">*</span></label>
+            <input type="text" id="no_kendaraan" name="no_kendaraan" required
+                   value="{{ data.get('No. Kendaraan', '') }}"
+                   placeholder="Contoh: B 1234 ABC"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="pemilik">Pemilik <span class="text-red-500">*</span></label>
+            <input type="text" id="pemilik" name="pemilik" required
+                   value="{{ data.get('Pemilik', '') }}"
+                   placeholder="Nama pemilik kendaraan"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="merk">Merk</label>
+            <input type="text" id="merk" name="merk"
+                   value="{{ data.get('Merk', '') }}"
+                   placeholder="Toyota, Honda, Yamaha, dll"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="model_kendaraan">Model Kendaraan</label>
+            <input type="text" id="model_kendaraan" name="model_kendaraan"
+                   value="{{ data.get('Model Kendaraan', '') }}"
+                   placeholder="Avanza, Vario, dll"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="jenis_type">Jenis/Type</label>
+            <input type="text" id="jenis_type" name="jenis_type"
+                   value="{{ data.get('Jenis/Type', '') }}"
+                   placeholder="Mobil Penumpang, Motor, Truk, dll"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="warna">Warna</label>
+            <input type="text" id="warna" name="warna"
+                   value="{{ data.get('Warna', '') }}"
+                   placeholder="Putih, Hitam, Merah, dll"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="bahan_bakar">Bahan Bakar</label>
+            <select id="bahan_bakar" name="bahan_bakar"
+                    class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="">-- Pilih --</option>
+              {% for bb in ['Bensin', 'Solar', 'Listrik', 'Hybrid', 'Pertamax', 'Pertalite'] %}
+              <option value="{{ bb }}" {% if data.get('Bahan Bakar', '') == bb %}selected{% endif %}>{{ bb }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="tahun_kendaraan">Tahun Kendaraan</label>
+            <input type="number" id="tahun_kendaraan" name="tahun_kendaraan"
+                   value="{{ data.get('Tahun Kendaraan', '') }}"
+                   placeholder="Contoh: 2020"
+                   min="1900" max="2099"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Nomor Identifikasi -->
+      <div>
+        <h2 class="text-sm font-semibold text-blue-700 uppercase tracking-wider mb-4 pb-2 border-b border-blue-100">
+          Nomor Identifikasi
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="no_rangka">No. Rangka</label>
+            <input type="text" id="no_rangka" name="no_rangka"
+                   value="{{ data.get('No. Rangka', '') }}"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="no_mesin">No. Mesin</label>
+            <input type="text" id="no_mesin" name="no_mesin"
+                   value="{{ data.get('No. Mesin', '') }}"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="no_bpkb">No. BPKB</label>
+            <input type="text" id="no_bpkb" name="no_bpkb"
+                   value="{{ data.get('No. BPKB', '') }}"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="posisi_bpkb">Posisi BPKB</label>
+            <input type="text" id="posisi_bpkb" name="posisi_bpkb"
+                   value="{{ data.get('Posisi BPKB', '') }}"
+                   placeholder="Kantor Pusat, Bank, dll"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="gps_apct">GPS/APCT</label>
+            <input type="text" id="gps_apct" name="gps_apct"
+                   value="{{ data.get('GPS/APCT', '') }}"
+                   placeholder="Ada / Tidak Ada / No GPS"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. STNK & Pajak -->
+      <div>
+        <h2 class="text-sm font-semibold text-blue-700 uppercase tracking-wider mb-4 pb-2 border-b border-blue-100">
+          STNK & Pajak
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="stnk_1_tahun">STNK 1 Tahun</label>
+            <input type="text" id="stnk_1_tahun" name="stnk_1_tahun"
+                   value="{{ data.get('STNK 1 Tahun', '') }}"
+                   placeholder="DD/MM/YYYY"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="realisasi_pajak">Realisasi Pembayaran Pajak</label>
+            <input type="text" id="realisasi_pajak" name="realisasi_pajak"
+                   value="{{ data.get('Realisasi Pembayaran Pajak', '') }}"
+                   placeholder="DD/MM/YYYY"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="stnk_5_tahun">STNK 5 Tahun</label>
+            <input type="text" id="stnk_5_tahun" name="stnk_5_tahun"
+                   value="{{ data.get('STNK 5 Tahun', '') }}"
+                   placeholder="DD/MM/YYYY"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="tgl_realisasi_kir">Tanggal Realisasi KIR</label>
+            <input type="text" id="tgl_realisasi_kir" name="tgl_realisasi_kir"
+                   value="{{ data.get('Tanggal Realisasi KIR', '') }}"
+                   placeholder="DD/MM/YYYY"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Asuransi -->
+      <div>
+        <h2 class="text-sm font-semibold text-blue-700 uppercase tracking-wider mb-4 pb-2 border-b border-blue-100">
+          Data Asuransi
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="no_asuransi">No. Asuransi</label>
+            <input type="text" id="no_asuransi" name="no_asuransi"
+                   value="{{ data.get('No Asuransi', '') }}"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="nama_asuransi">Nama Asuransi</label>
+            <input type="text" id="nama_asuransi" name="nama_asuransi"
+                   value="{{ data.get('Nama Asuransi', '') }}"
+                   placeholder="Jasa Raharja, Astra, dll"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="jenis_asuransi">Jenis Asuransi</label>
+            <select id="jenis_asuransi" name="jenis_asuransi"
+                    class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="">-- Pilih --</option>
+              {% for ja in ['All Risk', 'TLO', 'Kombinasi', 'Lainnya'] %}
+              <option value="{{ ja }}" {% if data.get('Jenis Asuransi', '') == ja %}selected{% endif %}>{{ ja }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="tgl_berlaku_asuransi">Tanggal Berlaku Asuransi</label>
+            <input type="text" id="tgl_berlaku_asuransi" name="tgl_berlaku_asuransi"
+                   value="{{ data.get('Tanggal Berlaku Asuransi', '') }}"
+                   placeholder="DD/MM/YYYY"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="periode_asuransi">Periode Tahun Asuransi</label>
+            <input type="text" id="periode_asuransi" name="periode_asuransi"
+                   value="{{ data.get('Periode Tahun Asuransi', '') }}"
+                   placeholder="2024-2025"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="biaya_premi_asuransi">Biaya Premi Asuransi</label>
+            <input type="text" id="biaya_premi_asuransi" name="biaya_premi_asuransi"
+                   value="{{ data.get('Biaya Premi Asuransi', '') }}"
+                   placeholder="Contoh: 5000000"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Keterangan -->
+      <div>
+        <h2 class="text-sm font-semibold text-blue-700 uppercase tracking-wider mb-4 pb-2 border-b border-blue-100">
+          Keterangan
+        </h2>
+        <textarea id="keterangan" name="keterangan" rows="3"
+                  placeholder="Catatan tambahan (opsional)..."
+                  class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none">{{ data.get('Keterangan', '') }}</textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+        <a href="{{ url_for('kendaraan_list') }}"
+           class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+          Batal
+        </a>
+        <button type="submit" id="btn-simpan-kendaraan"
+          class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          {% if mode == 'tambah' %}Simpan Kendaraan{% else %}Perbarui Data{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

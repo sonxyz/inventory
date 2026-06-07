@@ -1,0 +1,59 @@
+{% extends 'base_atk.html' %}
+{% block title %}{% if mode == 'tambah' %}Tambah Departement{% else %}Edit Departement{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mt-6 max-w-xl mx-auto">
+
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+    <a href="{{ url_for('atk_dashboard') }}" class="hover:text-emerald-600">Dashboard</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <a href="{{ url_for('atk_dept_list') }}" class="hover:text-emerald-600">Master Departement</a>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <span class="font-medium text-gray-800">{% if mode == 'tambah' %}Tambah{% else %}Edit{% endif %}</span>
+  </nav>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+      <div class="w-9 h-9 {% if mode == 'tambah' %}bg-emerald-100{% else %}bg-yellow-100{% endif %} rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 {% if mode == 'tambah' %}text-emerald-600{% else %}text-yellow-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {% if mode == 'tambah' %}
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          {% else %}
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          {% endif %}
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-gray-900">
+          {% if mode == 'tambah' %}Tambah Departement Baru{% else %}Edit Departement{% endif %}
+        </h1>
+      </div>
+    </div>
+
+    <form method="POST" class="p-6 space-y-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5" for="departement">Nama Departement <span class="text-red-500">*</span></label>
+        <input type="text" id="departement" name="departement" required
+               value="{{ data.get('Departement', '') }}"
+               placeholder="Contoh: HRD, Finance, IT, Marketing..."
+               class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+        <a href="{{ url_for('atk_dept_list') }}"
+           class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+          Batal
+        </a>
+        <button type="submit"
+          class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          {% if mode == 'tambah' %}Simpan{% else %}Perbarui{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
