@@ -134,15 +134,6 @@ def get_next_no(sheet):
         return 1
 
 
-def format_currency(value):
-    """Format angka ke format Rupiah."""
-    try:
-        num = int(str(value).replace('.', '').replace(',', '').replace('Rp', '').strip())
-        return f"Rp {num:,.0f}".replace(',', '.')
-    except Exception:
-        return str(value)
-
-
 def safe_num(val):
     """Konversi nilai terformat (seperti currency rupiah, desimal) ke float secara aman."""
     if val is None or val == '':
@@ -181,6 +172,15 @@ def safe_num(val):
         return float(s or 0)
     except Exception:
         return 0.0
+
+
+def format_currency(value):
+    """Format angka ke format Rupiah."""
+    try:
+        num = safe_num(value)
+        return f"Rp {num:,.0f}".replace(',', '.')
+    except Exception:
+        return str(value)
 
 
 def parse_date(date_str):
