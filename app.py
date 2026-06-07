@@ -170,10 +170,12 @@ def safe_num(val):
                 else:
                     s = s.replace(',', '.')
         else:
-            # Hanya ada titik (misal: 150.000)
+            # Hanya ada titik (misal: 150.000 atau 2.000.000)
             if '.' in s:
                 parts = s.split('.')
-                if len(parts) == 2 and len(parts[1]) == 3:
+                if len(parts) > 2:
+                    s = s.replace('.', '')
+                elif len(parts) == 2 and len(parts[1]) == 3:
                     s = s.replace('.', '')
                     
         return float(s or 0)
