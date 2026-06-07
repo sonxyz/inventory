@@ -65,11 +65,17 @@ BULAN_LIST = [
 def get_sheets_client():
     """Inisialisasi Google Sheets client."""
     try:
+        # Coba ambil dari GOOGLE_SHEETS_CREDENTIALS_JSON atau GOOGLE_SHEETS_CREDENTIALS
         creds_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS_JSON')
-        if creds_json:
+        if not creds_json:
+            creds_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
+            
+        # Jika isinya adalah teks JSON mentah (dimulai dengan '{')
+        if creds_json and creds_json.strip().startswith('{'):
             info = json.loads(creds_json)
             creds = Credentials.from_service_account_info(info, scopes=SCOPES)
         else:
+            # Fallback ke file path lokal
             creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
         client = gspread.authorize(creds)
         return client
