@@ -243,7 +243,7 @@ def clean_num_filter(value):
 # ============================================================
 @app.route('/')
 def portal():
-    return redirect(url_for('atk_dashboard'))
+    return render_template('portal.html')
 
 
 # ============================================================
