@@ -175,13 +175,58 @@
   const masterATK = {{ atk_list | tojson }};
   let rowCount = 1;
 
+  function safeNum(val) {
+    if (val === null || val === undefined || val === '') {
+      return 0;
+    }
+    if (typeof val === 'number') {
+      return val;
+    }
+    try {
+      let s = String(val).trim().replace(/Rp/gi, '').replace(/\s+/g, '');
+      if (s.includes(',')) {
+        if (s.includes('.')) {
+          if (s.indexOf('.') < s.indexOf(',')) {
+            // Format ID: 150.000,00 -> 150000.00
+            s = s.replace(/\./g, '').replace(/,/g, '.');
+          } else {
+            // Format US: 150,000.00 -> 150000.00
+            s = s.replace(/,/g, '');
+          }
+        } else {
+          // Hanya ada koma
+          const parts = s.split(',');
+          if (parts.length === 2 && parts[1].length === 3) {
+            s = s.replace(/,/g, '');
+          } else {
+            s = s.replace(/,/g, '.');
+          }
+        }
+      } else {
+        // Hanya ada titik
+        if (s.includes('.')) {
+          const parts = s.split('.');
+          if (parts.length > 2) {
+            s = s.replace(/\./g, '');
+          } else if (parts.length === 2 && parts[1].length === 3) {
+            s = s.replace(/\./g, '');
+          }
+        }
+      }
+      const num = parseFloat(s);
+      return isNaN(num) ? 0 : num;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   function onKodeBarangChange(selectEl, rowIndex) {
     const kode = selectEl.value;
     const item = masterATK.find(a => String(a['Kode']) === kode);
     if (item) {
       document.getElementById('nama_barang_' + rowIndex).value = item['Nama Barang'] || '';
       document.getElementById('satuan_' + rowIndex).value = item['Satuan'] || '';
-      document.getElementById('harga_satuan_' + rowIndex).value = item['Perkiraan Harga'] || 0;
+      document.getElementById('harga_satuan_' + rowIndex).value = safeNum(item['Perkiraan Harga']);
       hitungTotal(rowIndex);
     } else {
       document.getElementById('nama_barang_' + rowIndex).value = '';

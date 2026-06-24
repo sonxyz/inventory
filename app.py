@@ -229,6 +229,15 @@ def expiring_filter(value, days=30):
     return is_expiring_soon(value, days)
 
 
+@app.template_filter('clean_num')
+def clean_num_filter(value):
+    num = safe_num(value)
+    if num.is_integer():
+        return int(num)
+    return num
+
+
+
 # ============================================================
 # PORTAL PAGE
 # ============================================================
