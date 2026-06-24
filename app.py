@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 import os
 import json
 from datetime import datetime, timedelta
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # --- Config ---
 load_dotenv()
@@ -30,6 +32,7 @@ SHEET_SERVICE_MOTOR = 'History Service Kendaraan Motor'
 SHEET_MASTER_ATK = 'Master Data ATK'
 SHEET_MASTER_DEPT = 'Master Departement'
 SHEET_PENGAJUAN_ATK = 'Pengajuan ATK'
+SHEET_MASTER_USERS = 'Master Users'
 
 # Headers untuk setiap sheet
 HEADERS_KENDARAAN = [
@@ -55,6 +58,7 @@ HEADERS_PENGAJUAN_ATK = [
     'Kode Barang', 'Nama Barang', 'Jumlah', 'Satuan',
     'Harga Satuan', 'Total Harga', 'Keterangan'
 ]
+HEADERS_MASTER_USERS = ['No', 'Username', 'Password', 'Role']
 
 BULAN_LIST = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -216,6 +220,99 @@ def filter_records(records, search, fields):
     return result
 
 
+def init_users_sheet():
+    """Menginisialisasi sheet Master Users jika belum ada, dan membuat default admin."""
+    try:
+        sheet = get_sheet(SHEET_MASTER_USERS)
+        if not sheet:
+            spreadsheet = get_spreadsheet()
+            if spreadsheet:
+                sheet = spreadsheet.add_worksheet(title=SHEET_MASTER_USERS, rows="100", cols="4")
+                sheet.append_row(HEADERS_MASTER_USERS, value_input_option='USER_ENTERED')
+        
+        # Cek jika sheet kosong (hanya header)
+        records = get_all_data(sheet)
+        if not records:
+            default_pwd = generate_password_hash('admin123')
+            row = [1, 'admin', default_pwd, 'admin']
+            sheet.append_row(row, value_input_option='USER_ENTERED')
+    except Exception as e:
+        print(f"Error initializing users sheet: {e}")
+
+
+def get_user_by_username(username):
+    """Mencari user berdasarkan username (case-insensitive)."""
+    try:
+        init_users_sheet()
+        sheet = get_sheet(SHEET_MASTER_USERS)
+        if not sheet:
+            return None
+        records = get_all_data(sheet)
+        for r in records:
+            if str(r.get('Username', '')).strip().lower() == username.strip().lower():
+                return r
+        return None
+    except Exception:
+        return None
+
+
+def login_required(roles=None):
+    """Decorator untuk membatasi akses route berdasarkan role pengguna."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user' not in session:
+                flash('Silakan login terlebih dahulu untuk mengakses halaman ini.', 'warning')
+                return redirect(url_for('login', next=request.url))
+            if roles and session.get('role') not in roles:
+                flash('Anda tidak memiliki hak akses ke modul ini.', 'error')
+                return redirect(url_for('portal'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+@app.before_request
+def check_route_access():
+    if request.endpoint is None:
+        return
+        
+    # Endpoint bebas akses (tidak butuh login)
+    public_endpoints = ['login', 'static']
+    if request.endpoint in public_endpoints:
+        return
+        
+    # Verifikasi apakah pengguna sudah login
+    if 'user' not in session:
+        flash('Silakan login terlebih dahulu untuk mengakses halaman ini.', 'warning')
+        return redirect(url_for('login', next=request.url))
+        
+    # Verifikasi hak akses berdasarkan role pengguna
+    role = session.get('role')
+    
+    # Admin memiliki akses ke semua halaman
+    if role == 'admin':
+        return
+        
+    # Halaman manajemen pengguna hanya untuk Admin
+    if request.path.startswith('/admin'):
+        flash('Halaman ini hanya dapat diakses oleh Admin.', 'error')
+        return redirect(url_for('portal'))
+        
+    # Pembatasan akses Modul Kendaraan & Service
+    if request.path.startswith('/kendaraan') or request.path.startswith('/service'):
+        if role != 'kendaraan':
+            flash('Anda tidak memiliki hak akses ke modul Kendaraan & Service.', 'error')
+            return redirect(url_for('portal'))
+            
+    # Pembatasan akses Modul ATK
+    if request.path.startswith('/atk'):
+        if role != 'atk':
+            flash('Anda tidak memiliki hak akses ke modul ATK.', 'error')
+            return redirect(url_for('portal'))
+
+
+
 # ============================================================
 # Jinja2 filters
 # ============================================================
@@ -239,9 +336,116 @@ def clean_num_filter(value):
 
 
 # ============================================================
+# AUTHENTICATION
+# ============================================================
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user' in session:
+        return redirect(url_for('portal'))
+        
+    next_url = request.args.get('next', '')
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        user = get_user_by_username(username)
+        if user:
+            pwd_hash = user.get('Password', '')
+            if check_password_hash(pwd_hash, password):
+                session['user'] = user.get('Username')
+                session['role'] = user.get('Role')
+                flash(f'Selamat datang kembali, {user.get("Username")}!', 'success')
+                
+                if username.lower() == 'admin' and password == 'admin123':
+                    flash('PERINGATAN KEAMANAN: Harap segera ubah password default admin Anda!', 'error')
+                
+                if next_url:
+                    return redirect(next_url)
+                return redirect(url_for('portal'))
+                
+        flash('Username atau password salah.', 'error')
+        
+    return render_template('login.html', next_url=next_url)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    session.pop('role', None)
+    flash('Anda telah logout.', 'success')
+    return redirect(url_for('login'))
+
+
+# ============================================================
+# USER MANAGEMENT (ADMIN ONLY)
+# ============================================================
+@app.route('/admin/users', methods=['GET', 'POST'])
+@login_required(roles=['admin'])
+def admin_users():
+    try:
+        sheet = get_sheet(SHEET_MASTER_USERS)
+        if not sheet:
+            flash('Gagal mengakses sheet Master Users.', 'error')
+            return redirect(url_for('portal'))
+            
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            role = request.form.get('role', '').strip()
+            
+            if not username or not password or not role:
+                flash('Semua field wajib diisi.', 'error')
+            else:
+                existing = get_user_by_username(username)
+                if existing:
+                    flash(f'Username {username} sudah terdaftar.', 'error')
+                else:
+                    no = get_next_no(sheet)
+                    pwd_hash = generate_password_hash(password)
+                    row = [no, username, pwd_hash, role]
+                    sheet.append_row(row, value_input_option='USER_ENTERED')
+                    flash(f'User {username} berhasil ditambahkan.', 'success')
+            return redirect(url_for('admin_users'))
+            
+        records = get_all_data(sheet)
+        return render_template('admin_users.html', users=records)
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'error')
+        return redirect(url_for('portal'))
+
+
+@app.route('/admin/users/delete/<int:no>', methods=['POST'])
+@login_required(roles=['admin'])
+def admin_user_delete(no):
+    try:
+        sheet = get_sheet(SHEET_MASTER_USERS)
+        if not sheet:
+            flash('Gagal mengakses sheet.', 'error')
+            return redirect(url_for('admin_users'))
+            
+        records = get_all_data(sheet)
+        target = next((r for r in records if str(r.get('No', '')) == str(no)), None)
+        if target and target.get('Username') == session.get('user'):
+            flash('Anda tidak dapat menghapus akun Anda sendiri.', 'error')
+            return redirect(url_for('admin_users'))
+            
+        row_num = find_row_by_no(sheet, no)
+        if not row_num:
+            flash('User tidak ditemukan.', 'error')
+            return redirect(url_for('admin_users'))
+            
+        sheet.delete_rows(row_num)
+        flash('User berhasil dihapus.', 'success')
+    except Exception as e:
+        flash(f'Gagal menghapus user: {str(e)}', 'error')
+    return redirect(url_for('admin_users'))
+
+
+# ============================================================
 # PORTAL PAGE
 # ============================================================
 @app.route('/')
+@login_required()
 def portal():
     return render_template('portal.html')
 
