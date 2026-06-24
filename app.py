@@ -278,7 +278,7 @@ def check_route_access():
         return
         
     # Endpoint bebas akses (tidak butuh login)
-    public_endpoints = ['login', 'static']
+    public_endpoints = ['login', 'static', 'atk_pengajuan_tambah']
     if request.endpoint in public_endpoints:
         return
         
