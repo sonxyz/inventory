@@ -2,7 +2,7 @@
 {% block title %}Buat Pengajuan ATK{% endblock %}
 
 {% block content %}
-<div class="mt-6 max-w-6xl mx-auto">
+<div class="mt-6 max-w-7xl mx-auto">
 
   <!-- Breadcrumb -->
   <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
@@ -92,19 +92,25 @@
             <div class="item-row bg-gray-50 rounded-lg p-4 mb-3 border border-gray-200" id="row_1">
               <div class="flex items-start gap-2">
                 <span class="mt-2 text-xs font-bold text-gray-400 w-6 text-center flex-shrink-0">1</span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 flex-1">
-                  <div class="lg:col-span-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 flex-1">
+
+                  <!-- Kode Barang — Autocomplete -->
+                  <div class="lg:col-span-2 relative" id="ac-wrapper-1">
                     <label class="block text-xs font-medium text-gray-500 mb-1">Kode Barang <span class="text-red-500">*</span></label>
-                    <select name="kode_barang[]" onchange="onKodeBarangChange(this, 1)" required
-                            class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      <option value="">-- Pilih Barang --</option>
-                      {% for a in atk_list %}
-                      <option value="{{ a.get('Kode', '') }}" data-nama="{{ a.get('Nama Barang', '') }}" data-satuan="{{ a.get('Satuan', '') }}" data-harga="{{ a.get('Perkiraan Harga', 0) }}">
-                        {{ a.get('Kode', '') }} — {{ a.get('Nama Barang', '') }}
-                      </option>
-                      {% endfor %}
-                    </select>
+                    <!-- Hidden field carries the selected kode value for form submission -->
+                    <input type="hidden" name="kode_barang[]" id="kode_barang_hidden_1" />
+                    <!-- Visible search input -->
+                    <input type="text" id="ac-input-1" autocomplete="off" placeholder="Ketik kode / nama barang..."
+                           class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                           oninput="renderSuggestions(1, this.value)"
+                           onfocus="renderSuggestions(1, this.value)"
+                           onblur="scheduleClose(1)" />
+                    <!-- Dropdown -->
+                    <div id="ac-dropdown-1"
+                         class="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto hidden">
+                    </div>
                   </div>
+
                   <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Nama Barang</label>
                     <input type="text" name="nama_barang[]" id="nama_barang_1" readonly
@@ -127,11 +133,18 @@
                            onchange="hitungTotal(1)" oninput="hitungTotal(1)"
                            class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
+                  <!-- Keterangan — visible text input -->
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Keterangan</label>
+                    <input type="text" name="keterangan_item[]" id="keterangan_1"
+                           placeholder="Opsional..."
+                           class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-700" />
+                  </div>
+
                 </div>
                 <div class="flex flex-col items-center gap-1 mt-5 flex-shrink-0">
                   <div class="text-xs text-gray-400 whitespace-nowrap">Total:</div>
                   <div class="text-sm font-bold text-gray-700 whitespace-nowrap" id="total_display_1">Rp 0</div>
-                  <input type="hidden" name="keterangan_item[]" value="" />
                 </div>
               </div>
             </div>
@@ -175,87 +188,52 @@
   const masterATK = {{ atk_list | tojson }};
   let rowCount = 1;
 
+  // ---- Utility ----
   function safeNum(val) {
-    if (val === null || val === undefined || val === '') {
-      return 0;
-    }
-    if (typeof val === 'number') {
-      return val;
-    }
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return val;
     try {
       let s = String(val).trim().replace(/Rp/gi, '').replace(/\s+/g, '');
       if (s.includes(',')) {
         if (s.includes('.')) {
-          if (s.indexOf('.') < s.indexOf(',')) {
-            // Format ID: 150.000,00 -> 150000.00
-            s = s.replace(/\./g, '').replace(/,/g, '.');
-          } else {
-            // Format US: 150,000.00 -> 150000.00
-            s = s.replace(/,/g, '');
-          }
+          s = s.indexOf('.') < s.indexOf(',')
+            ? s.replace(/\./g, '').replace(/,/g, '.')
+            : s.replace(/,/g, '');
         } else {
-          // Hanya ada koma
           const parts = s.split(',');
-          if (parts.length === 2 && parts[1].length === 3) {
-            s = s.replace(/,/g, '');
-          } else {
-            s = s.replace(/,/g, '.');
-          }
+          s = (parts.length === 2 && parts[1].length === 3) ? s.replace(/,/g, '') : s.replace(/,/g, '.');
         }
-      } else {
-        // Hanya ada titik
-        if (s.includes('.')) {
-          const parts = s.split('.');
-          if (parts.length > 2) {
-            s = s.replace(/\./g, '');
-          } else if (parts.length === 2 && parts[1].length === 3) {
-            s = s.replace(/\./g, '');
-          }
+      } else if (s.includes('.')) {
+        const parts = s.split('.');
+        if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+          s = s.replace(/\./g, '');
         }
       }
       const num = parseFloat(s);
       return isNaN(num) ? 0 : num;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  function onKodeBarangChange(selectEl, rowIndex) {
-    const kode = selectEl.value;
-    const item = masterATK.find(a => String(a['Kode']) === kode);
-    if (item) {
-      document.getElementById('nama_barang_' + rowIndex).value = item['Nama Barang'] || '';
-      document.getElementById('satuan_' + rowIndex).value = item['Satuan'] || '';
-      document.getElementById('harga_satuan_' + rowIndex).value = safeNum(item['Perkiraan Harga']);
-      hitungTotal(rowIndex);
-    } else {
-      document.getElementById('nama_barang_' + rowIndex).value = '';
-      document.getElementById('satuan_' + rowIndex).value = '';
-      document.getElementById('harga_satuan_' + rowIndex).value = '';
-      document.getElementById('total_display_' + rowIndex).textContent = 'Rp 0';
-    }
-    updateGrandTotal();
-  }
-
-  function hitungTotal(rowIndex) {
-    const jumlah = parseFloat(document.getElementById('jumlah_' + rowIndex).value) || 0;
-    const harga = parseFloat(document.getElementById('harga_satuan_' + rowIndex).value) || 0;
-    const total = jumlah * harga;
-    document.getElementById('total_display_' + rowIndex).textContent = formatRupiah(total);
-    updateGrandTotal();
+    } catch (e) { return 0; }
   }
 
   function formatRupiah(num) {
     return 'Rp ' + Math.round(num).toLocaleString('id-ID');
   }
 
+  // ---- Totals ----
+  function hitungTotal(rowIndex) {
+    const jumlah = parseFloat(document.getElementById('jumlah_' + rowIndex)?.value) || 0;
+    const harga  = parseFloat(document.getElementById('harga_satuan_' + rowIndex)?.value) || 0;
+    const total  = jumlah * harga;
+    const el = document.getElementById('total_display_' + rowIndex);
+    if (el) el.textContent = formatRupiah(total);
+    updateGrandTotal();
+  }
+
   function updateGrandTotal() {
-    let grandTotal = 0;
-    let itemCount = 0;
+    let grandTotal = 0, itemCount = 0;
     document.querySelectorAll('.item-row').forEach(row => {
       const idx = row.id.split('_')[1];
       const jumlah = parseFloat(document.getElementById('jumlah_' + idx)?.value) || 0;
-      const harga = parseFloat(document.getElementById('harga_satuan_' + idx)?.value) || 0;
+      const harga  = parseFloat(document.getElementById('harga_satuan_' + idx)?.value) || 0;
       grandTotal += jumlah * harga;
       itemCount++;
     });
@@ -263,15 +241,114 @@
     document.getElementById('total-items').textContent = itemCount;
   }
 
+  // ---- Autocomplete ----
+  // Timers to defer dropdown close (allows click to register)
+  const closeTimers = {};
+
+  function scheduleClose(rowIndex) {
+    closeTimers[rowIndex] = setTimeout(() => {
+      const dd = document.getElementById('ac-dropdown-' + rowIndex);
+      if (dd) dd.classList.add('hidden');
+    }, 180);
+  }
+
+  function cancelClose(rowIndex) {
+    clearTimeout(closeTimers[rowIndex]);
+  }
+
+  /**
+   * Render suggestion list for a given row.
+   * Priority: items whose Kode OR Nama Barang STARTS WITH the query come first,
+   * then items that merely CONTAIN the query.
+   */
+  function renderSuggestions(rowIndex, query) {
+    const dd = document.getElementById('ac-dropdown-' + rowIndex);
+    if (!dd) return;
+
+    const q = query.trim().toLowerCase();
+
+    let items;
+    if (q === '') {
+      // Show all items when empty / first focus
+      items = masterATK.slice();
+    } else {
+      const prefixMatch  = [];
+      const containMatch = [];
+      masterATK.forEach(a => {
+        const kode = String(a['Kode'] || '').toLowerCase();
+        const nama = String(a['Nama Barang'] || '').toLowerCase();
+        if (kode.startsWith(q) || nama.startsWith(q)) {
+          prefixMatch.push(a);
+        } else if (kode.includes(q) || nama.includes(q)) {
+          containMatch.push(a);
+        }
+      });
+      items = prefixMatch.concat(containMatch);
+    }
+
+    if (items.length === 0) {
+      dd.innerHTML = '<div class="px-3 py-3 text-xs text-gray-400 text-center">Barang tidak ditemukan</div>';
+    } else {
+      dd.innerHTML = items.map(a => {
+        const kode = a['Kode'] || '';
+        const nama = a['Nama Barang'] || '';
+        const satuan = a['Satuan'] || '';
+        return `<div class="ac-item px-3 py-2 hover:bg-emerald-50 cursor-pointer flex items-center gap-2 border-b border-gray-50 last:border-0"
+                     onmousedown="cancelClose(${rowIndex})"
+                     onclick="selectItem(${rowIndex}, '${escapeJs(kode)}', '${escapeJs(nama)}', '${escapeJs(satuan)}', ${safeNum(a['Perkiraan Harga'])})">
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 flex-shrink-0">${kode}</span>
+          <span class="text-sm text-gray-800 truncate">${nama}</span>
+          <span class="text-xs text-gray-400 flex-shrink-0 ml-auto">${satuan}</span>
+        </div>`;
+      }).join('');
+    }
+
+    dd.classList.remove('hidden');
+  }
+
+  function escapeJs(str) {
+    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  function selectItem(rowIndex, kode, nama, satuan, harga) {
+    // Fill hidden field (submitted as kode_barang[])
+    const hiddenInput = document.getElementById('kode_barang_hidden_' + rowIndex);
+    if (hiddenInput) hiddenInput.value = kode;
+
+    // Fill visible search input
+    const acInput = document.getElementById('ac-input-' + rowIndex);
+    if (acInput) acInput.value = kode + (nama ? ' — ' + nama : '');
+
+    // Fill readonly detail fields
+    const namaEl   = document.getElementById('nama_barang_' + rowIndex);
+    const satuanEl = document.getElementById('satuan_' + rowIndex);
+    const hargaEl  = document.getElementById('harga_satuan_' + rowIndex);
+    if (namaEl)   namaEl.value   = nama;
+    if (satuanEl) satuanEl.value = satuan;
+    if (hargaEl)  hargaEl.value  = harga;
+
+    // Close dropdown & recalculate
+    const dd = document.getElementById('ac-dropdown-' + rowIndex);
+    if (dd) dd.classList.add('hidden');
+    hitungTotal(rowIndex);
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('.item-row').forEach(row => {
+      const idx = row.id.split('_')[1];
+      const wrapper = document.getElementById('ac-wrapper-' + idx);
+      const dd = document.getElementById('ac-dropdown-' + idx);
+      if (wrapper && dd && !wrapper.contains(e.target)) {
+        dd.classList.add('hidden');
+      }
+    });
+  });
+
+  // ---- Tambah / Hapus Baris ----
   function tambahBaris() {
     rowCount++;
     const container = document.getElementById('items-container');
-    const optionsHTML = '<option value="">-- Pilih Barang --</option>' +
-      masterATK.map(a =>
-        '<option value="' + a['Kode'] + '" data-nama="' + (a['Nama Barang']||'') + '" data-satuan="' + (a['Satuan']||'') + '" data-harga="' + (a['Perkiraan Harga']||0) + '">' +
-        a['Kode'] + ' — ' + (a['Nama Barang']||'') + '</option>'
-      ).join('');
-
     const newRow = document.createElement('div');
     newRow.className = 'item-row bg-gray-50 rounded-lg p-4 mb-3 border border-gray-200';
     newRow.id = 'row_' + rowCount;
@@ -279,14 +356,22 @@
     newRow.innerHTML = `
       <div class="flex items-start gap-2">
         <span class="mt-2 text-xs font-bold text-gray-400 w-6 text-center flex-shrink-0">${rowCount}</span>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 flex-1">
-          <div class="lg:col-span-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 flex-1">
+
+          <!-- Kode Barang — Autocomplete -->
+          <div class="lg:col-span-2 relative" id="ac-wrapper-${rowCount}">
             <label class="block text-xs font-medium text-gray-500 mb-1">Kode Barang <span class="text-red-500">*</span></label>
-            <select name="kode_barang[]" onchange="onKodeBarangChange(this, ${rowCount})" required
-                    class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-              ${optionsHTML}
-            </select>
+            <input type="hidden" name="kode_barang[]" id="kode_barang_hidden_${rowCount}" />
+            <input type="text" id="ac-input-${rowCount}" autocomplete="off" placeholder="Ketik kode / nama barang..."
+                   class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                   oninput="renderSuggestions(${rowCount}, this.value)"
+                   onfocus="renderSuggestions(${rowCount}, this.value)"
+                   onblur="scheduleClose(${rowCount})" />
+            <div id="ac-dropdown-${rowCount}"
+                 class="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto hidden">
+            </div>
           </div>
+
           <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">Nama Barang</label>
             <input type="text" name="nama_barang[]" id="nama_barang_${rowCount}" readonly
@@ -309,11 +394,18 @@
                    onchange="hitungTotal(${rowCount})" oninput="hitungTotal(${rowCount})"
                    class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
+          <!-- Keterangan -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Keterangan</label>
+            <input type="text" name="keterangan_item[]" id="keterangan_${rowCount}"
+                   placeholder="Opsional..."
+                   class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-700" />
+          </div>
+
         </div>
         <div class="flex flex-col items-center gap-1 mt-5 flex-shrink-0">
           <div class="text-xs text-gray-400 whitespace-nowrap">Total:</div>
           <div class="text-sm font-bold text-gray-700 whitespace-nowrap" id="total_display_${rowCount}">Rp 0</div>
-          <input type="hidden" name="keterangan_item[]" value="" />
           <button type="button" onclick="hapusBaris(${rowCount})" title="Hapus item"
             class="mt-1 p-1 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,10 +430,26 @@
       setTimeout(() => { row.remove(); updateGrandTotal(); }, 200);
     }
   }
+
+  // ---- Form validation — ensure hidden kode is set ----
+  document.getElementById('form-pengajuan').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.item-row');
+    let anyValid = false;
+    rows.forEach(row => {
+      const idx = row.id.split('_')[1];
+      const hidden = document.getElementById('kode_barang_hidden_' + idx);
+      if (hidden && hidden.value.trim() !== '') anyValid = true;
+    });
+    if (!anyValid) {
+      e.preventDefault();
+      alert('Pilih minimal 1 barang dari daftar sugesti sebelum menyimpan.');
+    }
+  });
 </script>
 
 <style>
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
+  @keyframes fadeIn  { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeOut { from { opacity: 1; }                               to { opacity: 0; transform: translateY(-8px); } }
+  .ac-item { transition: background 0.12s; }
 </style>
 {% endblock %}
