@@ -286,28 +286,60 @@
       items = prefixMatch.concat(containMatch);
     }
 
+    // Bangun ulang isi dropdown menggunakan DOM API (bukan innerHTML)
+    // agar karakter khusus di nama barang tidak merusak handler
+    dd.innerHTML = '';
+
     if (items.length === 0) {
-      dd.innerHTML = '<div class="px-3 py-3 text-xs text-gray-400 text-center">Barang tidak ditemukan</div>';
+      const empty = document.createElement('div');
+      empty.className = 'px-3 py-3 text-xs text-gray-400 text-center';
+      empty.textContent = 'Barang tidak ditemukan';
+      dd.appendChild(empty);
     } else {
-      dd.innerHTML = items.map(a => {
-        const kode = a['Kode'] || '';
-        const nama = a['Nama Barang'] || '';
-        const satuan = a['Satuan'] || '';
-        return `<div class="ac-item px-3 py-2 hover:bg-emerald-50 cursor-pointer flex items-center gap-2 border-b border-gray-50 last:border-0"
-                     onmousedown="cancelClose(${rowIndex})"
-                     onclick="selectItem(${rowIndex}, '${escapeJs(kode)}', '${escapeJs(nama)}', '${escapeJs(satuan)}', ${safeNum(a['Perkiraan Harga'])})">
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 flex-shrink-0">${kode}</span>
-          <span class="text-sm text-gray-800 truncate">${nama}</span>
-          <span class="text-xs text-gray-400 flex-shrink-0 ml-auto">${satuan}</span>
-        </div>`;
-      }).join('');
+      items.forEach(a => {
+        const kode   = a['Kode']          || '';
+        const nama   = a['Nama Barang']   || '';
+        const satuan = a['Satuan']        || '';
+        const harga  = safeNum(a['Perkiraan Harga']);
+
+        // Bungkus item
+        const item = document.createElement('div');
+        item.className = 'ac-item px-3 py-2 cursor-pointer flex items-center gap-2 border-b border-gray-50';
+
+        // Badge kode
+        const badge = document.createElement('span');
+        badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 flex-shrink-0';
+        badge.textContent = kode;
+
+        // Nama barang
+        const namaSpan = document.createElement('span');
+        namaSpan.className = 'text-sm text-gray-800 truncate';
+        namaSpan.textContent = nama;
+
+        // Satuan
+        const satuanSpan = document.createElement('span');
+        satuanSpan.className = 'text-xs text-gray-400 flex-shrink-0 ml-auto';
+        satuanSpan.textContent = satuan;
+
+        item.appendChild(badge);
+        item.appendChild(namaSpan);
+        item.appendChild(satuanSpan);
+
+        // e.preventDefault() pada mousedown mencegah blur pada input
+        // sehingga klik tetap terdaftar meski focus berpindah
+        item.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+        });
+
+        item.addEventListener('click', function() {
+          selectItem(rowIndex, kode, nama, satuan, harga);
+        });
+
+        dd.appendChild(item);
+      });
     }
 
     dd.classList.remove('hidden');
-  }
-
-  function escapeJs(str) {
-    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 
   function selectItem(rowIndex, kode, nama, satuan, harga) {
