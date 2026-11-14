@@ -84,7 +84,8 @@
   <!-- Info bar -->
   <div class="flex items-center justify-between mb-3 px-1">
     <p class="text-sm text-gray-500">
-      Menampilkan <span class="font-semibold text-gray-700">{{ records|length }}</span> data
+      Menampilkan <span class="font-semibold text-gray-700">{{ records|length }}</span>
+      dari <span class="font-semibold text-gray-700">{{ total_records }}</span> data
       {% if search %}<span>untuk pencarian "<strong>{{ search }}</strong>"</span>{% endif %}
     </p>
   </div>
@@ -181,5 +182,41 @@
       </table>
     </div>
   </div>
+
+  {% if total_pages > 1 %}
+  {% set accent = 'blue' if jenis == 'mobil' else 'purple' %}
+  <div class="flex items-center justify-between mt-4 px-1">
+    <p class="text-sm text-gray-500">
+      Halaman <span class="font-semibold text-gray-700">{{ page }}</span>
+      dari <span class="font-semibold text-gray-700">{{ total_pages }}</span>
+    </p>
+    <div class="flex items-center gap-1">
+      <a href="{{ url_for('service_' + jenis + '_list', page=[1, page - 1]|max, search=search or None) }}"
+         class="px-3 py-1.5 rounded-lg text-sm border transition-colors
+                {% if page <= 1 %}pointer-events-none opacity-40 border-gray-200 text-gray-400
+                {% else %}border-gray-200 text-gray-600 hover:bg-gray-50{% endif %}">
+        &laquo; Sebelumnya
+      </a>
+
+      {% set window_start = [1, page - 2]|max %}
+      {% set window_end = [total_pages, page + 2]|min %}
+      {% for p in range(window_start, window_end + 1) %}
+      <a href="{{ url_for('service_' + jenis + '_list', page=p, search=search or None) }}"
+         class="px-3 py-1.5 rounded-lg text-sm border transition-colors
+                {% if p == page %}bg-{{ accent }}-600 border-{{ accent }}-600 text-white font-semibold
+                {% else %}border-gray-200 text-gray-600 hover:bg-gray-50{% endif %}">
+        {{ p }}
+      </a>
+      {% endfor %}
+
+      <a href="{{ url_for('service_' + jenis + '_list', page=[total_pages, page + 1]|min, search=search or None) }}"
+         class="px-3 py-1.5 rounded-lg text-sm border transition-colors
+                {% if page >= total_pages %}pointer-events-none opacity-40 border-gray-200 text-gray-400
+                {% else %}border-gray-200 text-gray-600 hover:bg-gray-50{% endif %}">
+        Berikutnya &raquo;
+      </a>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

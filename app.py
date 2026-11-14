@@ -78,6 +78,11 @@ BULAN_LIST = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ]
 
+# Jumlah baris per halaman pada daftar history service. Sheet service memuat
+# ribuan baris; membatasi per halaman menjaga ukuran response tetap jauh di
+# bawah batas 4.5 MB Vercel.
+PER_PAGE_SERVICE = 100
+
 
 def get_sheets_client():
     """Inisialisasi Google Sheets client."""
@@ -317,6 +322,23 @@ def filter_records(records, search, fields):
                 result.append(r)
                 break
     return result
+
+
+def _safe_page(raw, total_pages):
+    """Parse nomor halaman dari query string secara aman.
+
+    Nilai tidak valid (kosong, bukan angka, negatif, atau di luar rentang)
+    dikembalikan ke halaman yang masih valid agar halaman tidak pernah error.
+    """
+    try:
+        page = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return 1
+    if page < 1:
+        return 1
+    if page > total_pages:
+        return total_pages
+    return page
 
 
 def init_users_sheet():
@@ -817,14 +839,22 @@ def kendaraan_update_dokumen(no):
 # SERVICE KENDARAAN (MOBIL & MOTOR)
 # ============================================================
 def service_list_view(jenis):
-    """View untuk list history service (reusable untuk mobil & motor)."""
+    """View untuk list history service (reusable untuk mobil & motor).
+
+    Hasil dipecah per halaman karena sheet service berisi ribuan baris
+    (motor ~2.7k). Merender semuanya sekaligus menghasilkan response
+    ~7.75 MB - melewati batas 4.5 MB Vercel - sehingga halaman tampil
+    kosong saat di-deploy.
+    """
     sheet_name = SHEET_SERVICE_MOBIL if jenis == 'mobil' else SHEET_SERVICE_MOTOR
     search = request.args.get('search', '').strip()
     try:
         sheet = get_sheet(sheet_name)
         if not sheet:
             flash('Tidak dapat terhubung ke Google Sheets.', 'error')
-            return render_template('service/list.html', records=[], search=search, jenis=jenis)
+            return render_template('service/list.html', records=[], search=search,
+                                   jenis=jenis, page=1, total_pages=1,
+                                   total_records=0)
 
         records = get_all_data(sheet)
         if search:
@@ -832,10 +862,21 @@ def service_list_view(jenis):
                 records, search,
                 ['No. Kendaraan', 'Nama Pemilik', 'Tanggal Service', 'Nama Bengkel', 'Jenis Service']
             )
-        return render_template('service/list.html', records=records, search=search, jenis=jenis)
+
+        total_records = len(records)
+        total_pages = max(1, (total_records + PER_PAGE_SERVICE - 1) // PER_PAGE_SERVICE)
+        page = _safe_page(request.args.get('page'), total_pages)
+        start = (page - 1) * PER_PAGE_SERVICE
+        page_records = records[start:start + PER_PAGE_SERVICE]
+
+        return render_template('service/list.html', records=page_records,
+                               search=search, jenis=jenis, page=page,
+                               total_pages=total_pages, total_records=total_records)
     except Exception as e:
         flash(f'Error: {str(e)}', 'error')
-        return render_template('service/list.html', records=[], search=search, jenis=jenis)
+        return render_template('service/list.html', records=[], search=search,
+                               jenis=jenis, page=1, total_pages=1,
+                               total_records=0)
 
 
 def service_tambah_view(jenis):
