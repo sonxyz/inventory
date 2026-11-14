@@ -60,6 +60,19 @@ HEADERS_PENGAJUAN_ATK = [
 ]
 HEADERS_MASTER_USERS = ['No', 'Username', 'Password', 'Role']
 
+# Nama baku per sheet. Dipakai get_all_data() untuk memetakan header yang
+# hanya berbeda kapitalisasi/spasi (mis. 'no' -> 'No') agar kode dapat
+# mengakses field dengan nama yang konsisten.
+CANONICAL_HEADERS = {
+    SHEET_KENDARAAN: HEADERS_KENDARAAN,
+    SHEET_SERVICE_MOBIL: HEADERS_SERVICE,
+    SHEET_SERVICE_MOTOR: HEADERS_SERVICE,
+    SHEET_MASTER_ATK: HEADERS_MASTER_ATK,
+    SHEET_MASTER_DEPT: HEADERS_MASTER_DEPT,
+    SHEET_PENGAJUAN_ATK: HEADERS_PENGAJUAN_ATK,
+    SHEET_MASTER_USERS: HEADERS_MASTER_USERS,
+}
+
 BULAN_LIST = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -109,12 +122,95 @@ def get_sheet(sheet_name):
         return None
 
 
+def _find_header_row(values):
+    """Cari indeks baris header pertama yang berisi minimal satu sel terisi."""
+    for index, row in enumerate(values):
+        if any(str(cell).strip() for cell in row):
+            return index
+    return None
+
+
+def _normalise_headers(header_row, canonical=None):
+    """Rapikan header mentah menjadi daftar nama kolom yang unik.
+
+    - Sel kosong pertama menjadi 'No' (kolom penomoran sering tanpa judul).
+    - Sel kosong lainnya menghasilkan ``None`` (kolom diabaikan), karena
+      spreadsheet sering menyisakan kolom kosong di kanan data.
+    - Ejaan yang berbeda hanya pada kapitalisasi/spasi dipetakan ke nama baku
+      di ``canonical`` (mis. 'no' -> 'No').
+    - Header duplikat diberi sufiks ' (2)', ' (3)', ... sehingga nilai pada
+      kemunculan pertama tetap terbaca dan tidak saling menimpa.
+    """
+    lookup = {}
+    for name in (canonical or []):
+        lookup.setdefault(name.strip().lower(), name)
+
+    headers = []
+    seen = {}
+    for index, cell in enumerate(header_row):
+        name = str(cell).strip() if cell is not None else ''
+        if not name:
+            if index == 0:
+                name = 'No'
+            elif canonical and index < len(canonical):
+                name = canonical[index]
+            else:
+                headers.append(None)
+                continue
+        name = lookup.get(name.lower(), name)
+        if name in seen:
+            seen[name] += 1
+            name = f'{name} ({seen[name]})'
+        else:
+            seen[name] = 1
+        headers.append(name)
+    return headers
+
+
 def get_all_data(sheet):
-    """Ambil semua data dari sheet sebagai list of dict."""
+    """Ambil semua data dari sheet sebagai list of dict.
+
+    Tidak memakai ``get_all_records()`` karena spreadsheet produksi tidak
+    konsisten: baris header bisa berada di bawah beberapa baris kosong, kolom
+    pertama bisa tanpa judul, dan sebagian header terduplikasi - semuanya
+    membuat ``get_all_records()`` melempar exception sehingga halaman tampil
+    kosong. Pembacaan dilakukan dari baris header yang terdeteksi, dan tiap
+    kolom dipetakan berdasarkan nama header, bukan posisi, karena sheet
+    kendaraan memuat kolom tambahan (PAJAK LANJUTAN, KIR, JT KIR) yang tidak
+    dikenal kode.
+    """
     try:
-        return sheet.get_all_records()
+        values = sheet.get_all_values()
     except Exception:
         return []
+
+    if not values:
+        return []
+
+    canonical = CANONICAL_HEADERS.get(getattr(sheet, 'title', ''), [])
+    header_index = _find_header_row(values)
+    if header_index is None:
+        return []
+
+    raw_header = values[header_index]
+    # Buang kolom kosong di ujung kanan agar grid yang di-padding tidak
+    # menghasilkan kunci palsu.
+    while raw_header and not str(raw_header[-1]).strip():
+        raw_header = raw_header[:-1]
+
+    headers = _normalise_headers(raw_header, canonical)
+
+    records = []
+    for row in values[header_index + 1:]:
+        if not any(str(cell).strip() for cell in row if cell is not None):
+            continue  # lewati baris kosong
+        record = {}
+        for position, header in enumerate(headers):
+            if header is None:
+                continue
+            record[header] = row[position] if position < len(row) else ''
+        records.append(record)
+    return records
 
 
 def find_row_by_no(sheet, no):
@@ -188,13 +284,16 @@ def format_currency(value):
 
 
 def parse_date(date_str):
-    """Parse tanggal dari format DD/MM/YYYY ke datetime object."""
+    """Parse tanggal dari format DD/MM/YYYY atau DD-MM-YYYY ke datetime."""
     if not date_str:
         return None
-    try:
-        return datetime.strptime(str(date_str).strip(), '%d/%m/%Y')
-    except Exception:
-        return None
+    text = str(date_str).strip()
+    for fmt in ('%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(text, fmt)
+        except Exception:
+            continue
+    return None
 
 
 def is_expiring_soon(date_str, days=30):

@@ -49,12 +49,12 @@ class TestFormatCurrency:
 
 
 class TestParseDate:
-    @pytest.mark.parametrize('raw', ['01/01/2026', '1/1/2026'])
-    def test_accepts_dd_mm_yyyy(self, raw):
+    @pytest.mark.parametrize('raw', ['01/01/2026', '1/1/2026', '01-01-2026', '1-1-2026'])
+    def test_accepts_dd_mm_yyyy_with_slash_or_dash(self, raw):
         parsed = parse_date(raw)
         assert parsed == datetime(2026, 1, 1)
 
-    @pytest.mark.parametrize('raw', ['2026-01-01', '2026/01/01', '01-01-2026', '', None, 'nonsense'])
+    @pytest.mark.parametrize('raw', ['2026-01-01', '2026/01/01', '', None, 'nonsense'])
     def test_rejects_other_formats(self, raw):
         assert parse_date(raw) is None
 

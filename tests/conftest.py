@@ -47,6 +47,13 @@ class FakeSheet:
             records.append(record)
         return records
 
+    def get_all_values(self):
+        """Raw grid including the header row, like gspread's get_all_values."""
+        return [list(self.headers)] + [list(row) for row in self._rows]
+
+    def row_values(self, index):
+        return self.get_all_values()[index - 1]
+
     def append_row(self, row, value_input_option=None):
         self._rows.append(list(row))
 
