@@ -60,6 +60,19 @@ HEADERS_PENGAJUAN_ATK = [
 ]
 HEADERS_MASTER_USERS = ['No', 'Username', 'Password', 'Role']
 
+# Nama baku per sheet. Dipakai get_all_data() untuk memetakan header yang
+# hanya berbeda kapitalisasi/spasi (mis. 'no' -> 'No') agar kode dapat
+# mengakses field dengan nama yang konsisten.
+CANONICAL_HEADERS = {
+    SHEET_KENDARAAN: HEADERS_KENDARAAN,
+    SHEET_SERVICE_MOBIL: HEADERS_SERVICE,
+    SHEET_SERVICE_MOTOR: HEADERS_SERVICE,
+    SHEET_MASTER_ATK: HEADERS_MASTER_ATK,
+    SHEET_MASTER_DEPT: HEADERS_MASTER_DEPT,
+    SHEET_PENGAJUAN_ATK: HEADERS_PENGAJUAN_ATK,
+    SHEET_MASTER_USERS: HEADERS_MASTER_USERS,
+}
+
 BULAN_LIST = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -109,12 +122,95 @@ def get_sheet(sheet_name):
         return None
 
 
+def _find_header_row(values):
+    """Cari indeks baris header pertama yang berisi minimal satu sel terisi."""
+    for index, row in enumerate(values):
+        if any(str(cell).strip() for cell in row):
+            return index
+    return None
+
+
+def _normalise_headers(header_row, canonical=None):
+    """Rapikan header mentah menjadi daftar nama kolom yang unik.
+
+    - Sel kosong pertama menjadi 'No' (kolom penomoran sering tanpa judul).
+    - Sel kosong lainnya menghasilkan ``None`` (kolom diabaikan), karena
+      spreadsheet sering menyisakan kolom kosong di kanan data.
+    - Ejaan yang berbeda hanya pada kapitalisasi/spasi dipetakan ke nama baku
+      di ``canonical`` (mis. 'no' -> 'No').
+    - Header duplikat diberi sufiks ' (2)', ' (3)', ... sehingga nilai pada
+      kemunculan pertama tetap terbaca dan tidak saling menimpa.
+    """
+    lookup = {}
+    for name in (canonical or []):
+        lookup.setdefault(name.strip().lower(), name)
+
+    headers = []
+    seen = {}
+    for index, cell in enumerate(header_row):
+        name = str(cell).strip() if cell is not None else ''
+        if not name:
+            if index == 0:
+                name = 'No'
+            elif canonical and index < len(canonical):
+                name = canonical[index]
+            else:
+                headers.append(None)
+                continue
+        name = lookup.get(name.lower(), name)
+        if name in seen:
+            seen[name] += 1
+            name = f'{name} ({seen[name]})'
+        else:
+            seen[name] = 1
+        headers.append(name)
+    return headers
+
+
 def get_all_data(sheet):
-    """Ambil semua data dari sheet sebagai list of dict."""
+    """Ambil semua data dari sheet sebagai list of dict.
+
+    Tidak memakai ``get_all_records()`` karena spreadsheet produksi tidak
+    konsisten: baris header bisa berada di bawah beberapa baris kosong, kolom
+    pertama bisa tanpa judul, dan sebagian header terduplikasi - semuanya
+    membuat ``get_all_records()`` melempar exception sehingga halaman tampil
+    kosong. Pembacaan dilakukan dari baris header yang terdeteksi, dan tiap
+    kolom dipetakan berdasarkan nama header, bukan posisi, karena sheet
+    kendaraan memuat kolom tambahan (PAJAK LANJUTAN, KIR, JT KIR) yang tidak
+    dikenal kode.
+    """
     try:
-        return sheet.get_all_records()
+        values = sheet.get_all_values()
     except Exception:
         return []
+
+    if not values:
+        return []
+
+    canonical = CANONICAL_HEADERS.get(getattr(sheet, 'title', ''), [])
+    header_index = _find_header_row(values)
+    if header_index is None:
+        return []
+
+    raw_header = values[header_index]
+    # Buang kolom kosong di ujung kanan agar grid yang di-padding tidak
+    # menghasilkan kunci palsu.
+    while raw_header and not str(raw_header[-1]).strip():
+        raw_header = raw_header[:-1]
+
+    headers = _normalise_headers(raw_header, canonical)
+
+    records = []
+    for row in values[header_index + 1:]:
+        if not any(str(cell).strip() for cell in row if cell is not None):
+            continue  # lewati baris kosong
+        record = {}
+        for position, header in enumerate(headers):
+            if header is None:
+                continue
+            record[header] = row[position] if position < len(row) else ''
+        records.append(record)
+    return records
 
 
 def find_row_by_no(sheet, no):
@@ -188,13 +284,16 @@ def format_currency(value):
 
 
 def parse_date(date_str):
-    """Parse tanggal dari format DD/MM/YYYY ke datetime object."""
+    """Parse tanggal dari format DD/MM/YYYY atau DD-MM-YYYY ke datetime."""
     if not date_str:
         return None
-    try:
-        return datetime.strptime(str(date_str).strip(), '%d/%m/%Y')
-    except Exception:
-        return None
+    text = str(date_str).strip()
+    for fmt in ('%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(text, fmt)
+        except Exception:
+            continue
+    return None
 
 
 def is_expiring_soon(date_str, days=30):
@@ -686,11 +785,11 @@ def kendaraan_update_dokumen(no):
         data = next((r for r in records if str(r.get('No', '')) == str(no)), {})
 
         if request.method == 'POST':
-            # Update hanya field dokumen (kolom L sampai T = index 12-20)
-            # STNK 1 Tahun=L(12), Realisasi Pajak=M(13), STNK 5 Tahun=N(14),
-            # Tgl KIR=O(15), No Asuransi=P(16), Nama Asuransi=Q(17),
-            # Jenis Asuransi=R(18), Tgl Berlaku Asuransi=S(19), Periode Asuransi=T(20),
-            # Biaya Premi Asuransi=U(21)
+            # Update hanya field dokumen (kolom K sampai T = index 10-19)
+            # STNK 1 Tahun=K(10), Realisasi Pajak=L(11), STNK 5 Tahun=M(12),
+            # Tgl KIR=N(13), No Asuransi=O(14), Nama Asuransi=P(15),
+            # Jenis Asuransi=Q(16), Tgl Berlaku Asuransi=R(17), Periode Asuransi=S(18),
+            # Biaya Premi Asuransi=T(19)
             updates = [
                 [request.form.get('stnk_1_tahun', ''),
                  request.form.get('realisasi_pajak', ''),
@@ -703,7 +802,7 @@ def kendaraan_update_dokumen(no):
                  request.form.get('periode_asuransi', ''),
                  request.form.get('biaya_premi_asuransi', '')]
             ]
-            sheet.update(f'L{row_num}:U{row_num}', updates, value_input_option='USER_ENTERED')
+            sheet.update(f'K{row_num}:T{row_num}', updates, value_input_option='USER_ENTERED')
             flash(f'Dokumen kendaraan No. {no} berhasil diperbarui.', 'success')
             return redirect(url_for('kendaraan_list'))
 
@@ -1525,13 +1624,14 @@ def atk_rekap():
 
     try:
         sheet = get_sheet(SHEET_PENGAJUAN_ATK)
-        records = get_all_data(sheet) if sheet else []
+        all_records = get_all_data(sheet) if sheet else []
 
         # Load departments list for filter dropdown
         sheet_dept = get_sheet(SHEET_MASTER_DEPT)
         dept_list = get_all_data(sheet_dept) if sheet_dept else []
 
         # Filter
+        records = all_records
         if bulan_filter:
             records = [r for r in records if str(r.get('Bulan', '')) == bulan_filter]
         if tahun_filter:
@@ -1567,9 +1667,13 @@ def atk_rekap():
         total_items = len(records)
         total_dept = len(dept_rekap)
 
-        # Get unique tahun for filter
-        all_records = get_all_data(sheet) if sheet else []
-        tahun_set = sorted(set(str(r.get('Tahun', '')) for r in all_records if r.get('Tahun', '')), reverse=True)
+        # Get unique tahun for filter, always including the year in effect so
+        # the dropdown reflects what the page is actually filtered by.
+        tahun_set = sorted(
+            set(str(r.get('Tahun', '')) for r in all_records if r.get('Tahun', ''))
+            | ({tahun_filter} if tahun_filter else set()),
+            reverse=True
+        )
 
         return render_template('atk/rekap.html',
                                dept_rekap=dept_rekap, barang_rekap=barang_rekap,

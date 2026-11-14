@@ -84,6 +84,21 @@
 
   <!-- Main Content -->
   <main class="w-full max-w-5xl mx-auto px-6 py-12 flex-grow flex flex-col justify-center items-center">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="w-full max-w-2xl mb-8 space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded-xl text-sm font-medium border flex gap-2 items-start
+                        {% if category == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-300
+                        {% elif category == 'error' or category == 'danger' %}bg-red-500/10 border-red-500/30 text-red-300
+                        {% else %}bg-blue-500/10 border-blue-500/30 text-blue-300{% endif %}">
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <div class="text-center max-w-2xl mb-14">
       <h1 class="font-display text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 text-white leading-tight">
         Selamat Datang di <span class="bg-gradient-to-r from-blue-400 via-teal-400 to-emerald-400 bg-clip-text text-transparent">Inventory DPP</span>
