@@ -686,11 +686,11 @@ def kendaraan_update_dokumen(no):
         data = next((r for r in records if str(r.get('No', '')) == str(no)), {})
 
         if request.method == 'POST':
-            # Update hanya field dokumen (kolom L sampai T = index 12-20)
-            # STNK 1 Tahun=L(12), Realisasi Pajak=M(13), STNK 5 Tahun=N(14),
-            # Tgl KIR=O(15), No Asuransi=P(16), Nama Asuransi=Q(17),
-            # Jenis Asuransi=R(18), Tgl Berlaku Asuransi=S(19), Periode Asuransi=T(20),
-            # Biaya Premi Asuransi=U(21)
+            # Update hanya field dokumen (kolom K sampai T = index 10-19)
+            # STNK 1 Tahun=K(10), Realisasi Pajak=L(11), STNK 5 Tahun=M(12),
+            # Tgl KIR=N(13), No Asuransi=O(14), Nama Asuransi=P(15),
+            # Jenis Asuransi=Q(16), Tgl Berlaku Asuransi=R(17), Periode Asuransi=S(18),
+            # Biaya Premi Asuransi=T(19)
             updates = [
                 [request.form.get('stnk_1_tahun', ''),
                  request.form.get('realisasi_pajak', ''),
@@ -703,7 +703,7 @@ def kendaraan_update_dokumen(no):
                  request.form.get('periode_asuransi', ''),
                  request.form.get('biaya_premi_asuransi', '')]
             ]
-            sheet.update(f'L{row_num}:U{row_num}', updates, value_input_option='USER_ENTERED')
+            sheet.update(f'K{row_num}:T{row_num}', updates, value_input_option='USER_ENTERED')
             flash(f'Dokumen kendaraan No. {no} berhasil diperbarui.', 'success')
             return redirect(url_for('kendaraan_list'))
 
@@ -1525,13 +1525,14 @@ def atk_rekap():
 
     try:
         sheet = get_sheet(SHEET_PENGAJUAN_ATK)
-        records = get_all_data(sheet) if sheet else []
+        all_records = get_all_data(sheet) if sheet else []
 
         # Load departments list for filter dropdown
         sheet_dept = get_sheet(SHEET_MASTER_DEPT)
         dept_list = get_all_data(sheet_dept) if sheet_dept else []
 
         # Filter
+        records = all_records
         if bulan_filter:
             records = [r for r in records if str(r.get('Bulan', '')) == bulan_filter]
         if tahun_filter:
@@ -1567,9 +1568,13 @@ def atk_rekap():
         total_items = len(records)
         total_dept = len(dept_rekap)
 
-        # Get unique tahun for filter
-        all_records = get_all_data(sheet) if sheet else []
-        tahun_set = sorted(set(str(r.get('Tahun', '')) for r in all_records if r.get('Tahun', '')), reverse=True)
+        # Get unique tahun for filter, always including the year in effect so
+        # the dropdown reflects what the page is actually filtered by.
+        tahun_set = sorted(
+            set(str(r.get('Tahun', '')) for r in all_records if r.get('Tahun', ''))
+            | ({tahun_filter} if tahun_filter else set()),
+            reverse=True
+        )
 
         return render_template('atk/rekap.html',
                                dept_rekap=dept_rekap, barang_rekap=barang_rekap,
