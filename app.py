@@ -23,6 +23,10 @@ CREDENTIALS_FILE = os.getenv('GOOGLE_SHEETS_CREDENTIALS', 'credentials.json')
 SPREADSHEET_NAME = os.getenv('SPREADSHEET_NAME', 'database-inventory-dpp')
 PORT = int(os.getenv('PORT', 5000))
 
+# Cache spreadsheet per proses. client.open() memakan ~2 detik, dan satu
+# request bisa butuh beberapa sheet sekaligus (halaman tracking butuh 3).
+_SPREADSHEET_CACHE = None
+
 # Sheet names (exact match)
 SHEET_KENDARAAN = 'Master Data Kendaraan'
 SHEET_SERVICE_MOBIL = 'History Service Kendaraan Mobil'
@@ -106,12 +110,25 @@ def get_sheets_client():
 
 
 def get_spreadsheet():
-    """Buka spreadsheet."""
+    """Buka spreadsheet, dengan cache per proses.
+
+    ``client.open()`` menembak API Google dan terukur ~2 detik. Sebelum ada
+    cache, setiap ``get_sheet()`` membukanya ulang sehingga halaman tracking
+    (butuh 3 sheet) menghabiskan ~6 detik hanya untuk koneksi dan melewati
+    batas waktu serverless. Cache ini aman karena spreadsheet tidak berubah
+    nama selama proses hidup; kegagalan tidak di-cache agar request
+    berikutnya bisa mencoba lagi.
+    """
+    global _SPREADSHEET_CACHE
+    if _SPREADSHEET_CACHE is not None:
+        return _SPREADSHEET_CACHE
+
     client = get_sheets_client()
     if not client:
         return None
     try:
-        return client.open(SPREADSHEET_NAME)
+        _SPREADSHEET_CACHE = client.open(SPREADSHEET_NAME)
+        return _SPREADSHEET_CACHE
     except Exception:
         return None
 
